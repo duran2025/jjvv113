@@ -50,6 +50,9 @@
   .btn-sm { background: transparent; color: var(--navy); border: 1px solid var(--line, #C9D2DC); }
   .btn-sm:hover { border-color: var(--navy); }
   .btn-sm[disabled], .file-btn.busy { opacity: .5; pointer-events: none; }
+  .spec { color: var(--navy); font-size: 0.82rem; margin: 0 0 10px; }
+  .focus { font-size: 0.82rem; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; margin-left: 4px; }
+  .focus select { font: inherit; font-size: 0.82rem; padding: 6px 8px; border: 1px solid var(--line, #C9D2DC); border-radius: 8px; background: var(--white, #fff); color: var(--navy); }
   .slot-status { font-size: 0.8rem; margin: 8px 0 0; min-height: 1.1em; color: var(--muted); }
   .slot-status.ok { color: var(--green); }
   .slot-status.err { color: #C0392B; }
@@ -107,7 +110,7 @@
     <div class="panel-head">
       <div>
         <h1 class="admin-title">Imágenes del sitio</h1>
-        <p class="admin-sub">Elige una sección y sube una foto nueva para reemplazar la actual. Las fotos se reducen automáticamente. Después de subir, el sitio tarda cerca de un minuto en mostrar el cambio.</p>
+        <p class="admin-sub">Elige una sección y sube una foto nueva para reemplazar la actual. Cada foto se recorta y comprime sola al tamaño ideal indicado. Después de subir, el sitio tarda cerca de un minuto en mostrar el cambio.</p>
       </div>
       <button id="logout-btn" class="btn-sm" type="button">Desconectar</button>
     </div>
@@ -131,6 +134,7 @@
   const GROUPS = [
     {
       id: 'inicio', title: 'Inicio', page: 'index.html',
+      spec: { w: 1920, h: 1080, kb: 400 },
       note: 'Imagen principal de la portada.',
       slots: [
         { key: 'hero', name: 'Foto principal (portada)', desc: 'Fondo de la portada. Mejor en formato horizontal.' },
@@ -138,6 +142,7 @@
     },
     {
       id: 'portadas', title: 'Portadas de páginas', page: null,
+      spec: { w: 1920, h: 600, kb: 250 },
       note: 'Imagen de fondo del encabezado de cada página. Se oscurece un poco para que el título se lea bien.',
       slots: [
         { key: 'nosotros_hero',    name: 'Portada — Nosotros',    desc: 'Encabezado de la página Nosotros.' },
@@ -150,6 +155,7 @@
     },
     {
       id: 'noticias', title: 'Noticias', page: 'noticias.html',
+      spec: { w: 800, h: 600, kb: 120 },
       note: 'Miniaturas de las cuatro noticias, de arriba hacia abajo. Reemplazan al ícono.',
       slots: [
         { key: 'noticia_1', name: 'Noticia 1', desc: 'Primera noticia (la destacada).' },
@@ -160,6 +166,7 @@
     },
     {
       id: 'galeria', title: 'Galería', page: 'galeria.html',
+      spec: { w: 1200, h: 800, kb: 200 },
       note: 'Fotos reservadas para la galería. La página Galería aún está en construcción, así que por ahora no se ven en el sitio.',
       slots: [1, 2, 3, 4, 5, 6].map((n) => ({
         key: 'galeria_' + n, name: 'Galería — foto ' + n, desc: 'Foto ' + n + ' de la galería.',
@@ -168,7 +175,6 @@
   ];
 
   const UPLOAD_DIR = 'assets/uploads';   // carpeta del repositorio donde se guardan las fotos
-  const MAX_SIDE = 2000;                 // lado mayor máximo en píxeles
   const MAX_INPUT_MB = 15;               // peso máximo del archivo original
   const LS_REPO = 'jv113_repo';
   const LS_TOKEN = 'jv113_token';
@@ -288,11 +294,15 @@
           <div class="slot-info">
             <p class="name">${slot.name}</p>
             <p class="desc">${slot.desc}</p>
+            <p class="spec">Tamaño ideal: <strong>${g.spec.w} × ${g.spec.h} px</strong> (se recorta y comprime solo)</p>
             <div class="slot-actions">
               <label class="file-btn" id="label-${slot.key}">Cambiar imagen
                 <input type="file" accept="image/*" id="file-${slot.key}" aria-label="Cambiar imagen: ${slot.name}">
               </label>
               <button type="button" class="btn-sm" id="reset-${slot.key}">Volver a la original</button>
+              <label class="focus">Encuadre
+                <select id="focus-${slot.key}"><option value="center">Centro</option><option value="top">Arriba</option><option value="bottom">Abajo</option></select>
+              </label>
             </div>
             <p class="slot-status" id="status-${slot.key}" aria-live="polite"></p>
           </div>`;
@@ -303,7 +313,7 @@
       g.slots.forEach((slot) => {
         el('file-' + slot.key).addEventListener('change', (e) => {
           const file = e.target.files[0];
-          if (file) uploadImage(slot.key, file);
+          if (file) uploadImage(slot.key, file, g.spec);
           e.target.value = '';
         });
         el('reset-' + slot.key).addEventListener('click', () => resetImage(slot.key, slot.name));
@@ -318,21 +328,34 @@
   }
 
   // ── Subir / restaurar ─────────────────────────────────────────
-  // Reduce la imagen y la guarda como JPG para que el sitio cargue rápido.
-  async function prepareImage(file) {
+  // Recorta la foto a la proporción ideal, la ajusta al tamaño indicado y la
+  // comprime como JPG hasta que pese menos que el máximo de ese lugar.
+  async function prepareImage(file, spec, focus) {
     const bmp = await createImageBitmap(file);
-    const scale = Math.min(1, MAX_SIDE / Math.max(bmp.width, bmp.height));
-    const w = Math.round(bmp.width * scale);
-    const h = Math.round(bmp.height * scale);
+    const ratio = spec.w / spec.h;
+    let sw = bmp.width, sh = bmp.height;
+    if (sw / sh > ratio) sw = Math.round(sh * ratio); else sh = Math.round(sw / ratio);
+    const sx = Math.round((bmp.width - sw) / 2);
+    const fy = focus === 'top' ? 0 : focus === 'bottom' ? 1 : 0.5;
+    const sy = Math.round((bmp.height - sh) * fy);
+    const scale = Math.min(1, spec.w / sw);          // nunca se agranda la foto
+    const w = Math.round(sw * scale);
+    const h = Math.round(sh * scale);
     const canvas = document.createElement('canvas');
     canvas.width = w; canvas.height = h;
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, w, h);
-    ctx.drawImage(bmp, 0, 0, w, h);
-    const blob = await new Promise((res) => canvas.toBlob(res, 'image/jpeg', 0.86));
-    if (!blob) throw new Error('No se pudo procesar la imagen.');
-    return blob;
+    ctx.drawImage(bmp, sx, sy, sw, sh, 0, 0, w, h);
+    const toBlob = (q) => new Promise((res) => canvas.toBlob(res, 'image/jpeg', q));
+    let q = 0.88, blob;
+    for (;;) {
+      blob = await toBlob(q);
+      if (!blob) throw new Error('No se pudo procesar la imagen.');
+      if (blob.size <= spec.kb * 1024 || q <= 0.55) break;
+      q -= 0.06;
+    }
+    return { blob, w, h, small: sw < spec.w * 0.85 };
   }
 
   function toBase64(blob) {
@@ -344,7 +367,7 @@
     });
   }
 
-  async function uploadImage(key, file) {
+  async function uploadImage(key, file, spec) {
     const label = el('label-' + key);
     if (!file.type.startsWith('image/')) {
       setStatus(key, 'El archivo no es una imagen.', 'err');
@@ -358,7 +381,8 @@
     label.classList.add('busy');
     setStatus(key, 'Procesando y subiendo...');
     try {
-      const blob = await prepareImage(file);
+      const out = await prepareImage(file, spec, el('focus-' + key).value);
+      const blob = out.blob;
       const content = await toBase64(blob);
       await enqueue(async () => {
         const res = await gh('PUT', '/contents/' + path(key), {
@@ -369,7 +393,8 @@
         });
         shaByKey[key] = res.content.sha;
       });
-      setStatus(key, 'Imagen subida. El sitio la mostrará en cerca de un minuto.', 'ok');
+      setStatus(key, `Imagen subida (${out.w} × ${out.h} px, ${Math.round(blob.size / 1024)} KB). El sitio la mostrará en cerca de un minuto.` +
+        (out.small ? ` Ojo: la foto original es más chica que la ideal (${spec.w} × ${spec.h} px) y podría verse borrosa.` : ''), 'ok');
       refreshSlot(key, URL.createObjectURL(blob));
     } catch (err) {
       setStatus(key, 'No se pudo subir: ' + (err.message || err), 'err');
