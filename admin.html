@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel de administración — Junta de Vecinos 113</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="stylesheet" href="css/styles.css">
+<style>
+  .admin-wrap { max-width: 920px; margin: 0 auto; padding: 48px 24px 80px; }
+  .admin-box {
+    background: var(--white, #fff); border: 1px solid var(--line, #E3E8EE);
+    border-radius: 14px; padding: 28px;
+  }
+  .admin-title { font-family: var(--display); font-weight: 700; color: var(--navy); margin: 0 0 6px; font-size: 1.4rem; }
+  .admin-sub { color: var(--muted); font-size: 0.92rem; margin: 0 0 22px; }
+  #login-box { max-width: 520px; margin: 0 auto; }
+  #login-error { color: #C0392B; font-size: 0.85rem; margin-top: 10px; }
+  .hint { color: var(--muted); font-size: 0.82rem; margin: 6px 0 0; }
+
+  .panel-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
+  .panel-head .admin-sub { margin-bottom: 0; max-width: 560px; }
+
+  .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 22px 0 18px; }
+  .tab {
+    border: 1px solid var(--line, #E3E8EE); background: var(--white, #fff); color: var(--navy);
+    font: inherit; font-weight: 600; font-size: 0.88rem; padding: 8px 14px; border-radius: 999px; cursor: pointer;
+  }
+  .tab[aria-selected="true"] { background: var(--navy); border-color: var(--navy); color: #fff; }
+  .tab:focus-visible, .btn-sm:focus-visible, .file-btn:focus-within { outline: 3px solid var(--green); outline-offset: 2px; }
+
+  .group { display: none; }
+  .group.active { display: block; }
+  .group-note { color: var(--muted); font-size: 0.88rem; margin: 0 0 14px; }
+  .group-note a { color: var(--green); font-weight: 600; }
+
+  .slot-row { display: flex; align-items: center; gap: 20px; padding: 18px 0; border-bottom: 1px solid var(--line, #E3E8EE); }
+  .slot-row:last-child { border-bottom: none; }
+  .slot-preview {
+    width: 132px; height: 88px; border-radius: 8px; object-fit: cover; flex-shrink: 0;
+    background: var(--bg-soft, #F2F5F8); border: 1px solid var(--line, #E3E8EE);
+  }
+  .slot-info { flex: 1; min-width: 0; }
+  .slot-info .name { font-weight: 700; color: var(--navy); font-size: 0.98rem; margin: 0 0 2px; }
+  .slot-info .desc { color: var(--muted); font-size: 0.84rem; margin: 0 0 10px; }
+  .slot-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .file-btn, .btn-sm { font: inherit; font-size: 0.85rem; font-weight: 600; border-radius: 8px; padding: 8px 14px; cursor: pointer; }
+  .file-btn { background: var(--navy); color: #fff; border: 1px solid var(--navy); position: relative; }
+  .file-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+  .btn-sm { background: transparent; color: var(--navy); border: 1px solid var(--line, #C9D2DC); }
+  .btn-sm:hover { border-color: var(--navy); }
+  .btn-sm[disabled], .file-btn.busy { opacity: .5; pointer-events: none; }
+  .slot-status { font-size: 0.8rem; margin: 8px 0 0; min-height: 1.1em; color: var(--muted); }
+  .slot-status.ok { color: var(--green); }
+  .slot-status.err { color: #C0392B; }
+
+  .foot { margin-top: 26px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .foot a { color: var(--navy); font-weight: 600; font-size: 0.9rem; }
+
+  @media (max-width: 600px) {
+    .slot-row { flex-direction: column; align-items: flex-start; }
+    .slot-preview { width: 100%; height: 160px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap nav-row">
+    <a href="index.html" class="brand">
+      <svg class="brand-mark" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="24" cy="12" r="6" fill="#4F8C3B"/>
+        <circle cx="10" cy="18" r="5" fill="#1B3A5B"/>
+        <circle cx="38" cy="18" r="5" fill="#1B3A5B"/>
+        <path d="M24 20c-7 0-12 5-12 12v10h24V32c0-7-5-12-12-12Z" fill="#4F8C3B"/>
+        <path d="M10 23c-5 0-9 4-9 9v9h9V28c0-2 .6-3.8 1.7-5.3A9 9 0 0 0 10 23Z" fill="#1B3A5B"/>
+        <path d="M38 23c5 0 9 4 9 9v9h-9V28c0-2-.6-3.8-1.7-5.3A9 9 0 0 1 38 23Z" fill="#1B3A5B"/>
+      </svg>
+      <span class="brand-text">Junta de Vecinos<span class="num">113</span></span>
+    </a>
+    <span style="font-family: var(--body); font-weight: 700; color: var(--navy); font-size: 0.9rem;">Panel de administración</span>
+  </div>
+</header>
+
+<div class="admin-wrap">
+
+  <div class="admin-box" id="login-box">
+    <h1 class="admin-title">Conectar con GitHub</h1>
+    <p class="admin-sub">Las imágenes se guardan en el repositorio del sitio y Vercel lo actualiza solo. Solo la directiva debe tener el token de acceso.</p>
+    <form id="login-form" class="contact-form">
+      <div class="field">
+        <label for="repo">Repositorio</label>
+        <input type="text" id="repo" value="duran2025/jjvv113" placeholder="usuario/nombre-del-repositorio" autocomplete="off" required>
+        <p class="hint">Es la parte de la dirección de GitHub que viene después de github.com/.</p>
+      </div>
+      <div class="field">
+        <label for="token">Token de acceso</label>
+        <input type="password" id="token" autocomplete="off" required>
+        <p class="hint">Token de GitHub limitado a este repositorio, con permiso "Contents: Read and write". Se guarda solo en este navegador.</p>
+      </div>
+      <button type="submit" class="btn-cta" style="align-self:flex-start; border:none; cursor:pointer;">Conectar</button>
+      <p id="login-error" role="alert"></p>
+    </form>
+  </div>
+
+  <div class="admin-box" id="panel-box" style="display:none;">
+    <div class="panel-head">
+      <div>
+        <h1 class="admin-title">Imágenes del sitio</h1>
+        <p class="admin-sub">Elige una sección y sube una foto nueva para reemplazar la actual. Las fotos se reducen automáticamente. Después de subir, el sitio tarda cerca de un minuto en mostrar el cambio.</p>
+      </div>
+      <button id="logout-btn" class="btn-sm" type="button">Desconectar</button>
+    </div>
+
+    <div class="tabs" role="tablist" id="tabs"></div>
+    <div id="groups"></div>
+
+    <div class="foot">
+      <a href="index.html" target="_blank" rel="noopener">Ver el sitio</a>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ───────────────────────────────────────────────────────────────
+  // Todas las imágenes administrables del sitio.
+  // Para sumar una nueva: agrega un objeto en el grupo que corresponda y
+  // pon la misma "key" como data-img-key="..." en el HTML de la página.
+  // ───────────────────────────────────────────────────────────────
+  const GROUPS = [
+    {
+      id: 'inicio', title: 'Inicio', page: 'index.html',
+      note: 'Imagen principal de la portada.',
+      slots: [
+        { key: 'hero', name: 'Foto principal (portada)', desc: 'Fondo de la portada. Mejor en formato horizontal.' },
+      ],
+    },
+    {
+      id: 'portadas', title: 'Portadas de páginas', page: null,
+      note: 'Imagen de fondo del encabezado de cada página. Se oscurece un poco para que el título se lea bien.',
+      slots: [
+        { key: 'nosotros_hero',    name: 'Portada — Nosotros',    desc: 'Encabezado de la página Nosotros.' },
+        { key: 'noticias_hero',    name: 'Portada — Noticias',    desc: 'Encabezado de la página Noticias.' },
+        { key: 'actividades_hero', name: 'Portada — Actividades', desc: 'Encabezado de la página Actividades.' },
+        { key: 'documentos_hero',  name: 'Portada — Documentos',  desc: 'Encabezado de la página Documentos.' },
+        { key: 'galeria_hero',     name: 'Portada — Galería',     desc: 'Encabezado de la página Galería.' },
+        { key: 'contacto_hero',    name: 'Portada — Contacto',    desc: 'Encabezado de la página Contacto.' },
+      ],
+    },
+    {
+      id: 'noticias', title: 'Noticias', page: 'noticias.html',
+      note: 'Miniaturas de las cuatro noticias, de arriba hacia abajo. Reemplazan al ícono.',
+      slots: [
+        { key: 'noticia_1', name: 'Noticia 1', desc: 'Primera noticia (la destacada).' },
+        { key: 'noticia_2', name: 'Noticia 2', desc: 'Segunda noticia.' },
+        { key: 'noticia_3', name: 'Noticia 3', desc: 'Tercera noticia.' },
+        { key: 'noticia_4', name: 'Noticia 4', desc: 'Cuarta noticia.' },
+      ],
+    },
+    {
+      id: 'galeria', title: 'Galería', page: 'galeria.html',
+      note: 'Fotos reservadas para la galería. La página Galería aún está en construcción, así que por ahora no se ven en el sitio.',
+      slots: [1, 2, 3, 4, 5, 6].map((n) => ({
+        key: 'galeria_' + n, name: 'Galería — foto ' + n, desc: 'Foto ' + n + ' de la galería.',
+      })),
+    },
+  ];
+
+  const UPLOAD_DIR = 'assets/uploads';   // carpeta del repositorio donde se guardan las fotos
+  const MAX_SIDE = 2000;                 // lado mayor máximo en píxeles
+  const MAX_INPUT_MB = 15;               // peso máximo del archivo original
+  const LS_REPO = 'jv113_repo';
+  const LS_TOKEN = 'jv113_token';
+  const PLACEHOLDER = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="264" height="176" viewBox="0 0 264 176"><rect width="264" height="176" fill="#F2F5F8"/><text x="132" y="94" text-anchor="middle" font-family="sans-serif" font-size="15" fill="#7B8794">Imagen original</text></svg>'
+  );
+
+  let repo = '';
+  let token = '';
+  let branch = 'main';
+  let shaByKey = {};     // key -> sha del archivo actual en GitHub (solo las que tienen foto subida)
+  let queue = Promise.resolve();
+
+  const el = (id) => document.getElementById(id);
+  const path = (key) => `${UPLOAD_DIR}/${key}.jpg`;
+
+  // ── GitHub ────────────────────────────────────────────────────
+  async function gh(method, url, body) {
+    const res = await fetch('https://api.github.com/repos/' + repo + url, {
+      method,
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Accept': 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+        ...(body ? { 'Content-Type': 'application/json' } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    let data = null;
+    try { data = await res.json(); } catch (_) {}
+    if (!res.ok) {
+      const err = new Error((data && data.message) || ('Error ' + res.status));
+      err.status = res.status;
+      throw err;
+    }
+    return data;
+  }
+
+  // Los cambios se hacen de a uno para que los commits no choquen.
+  function enqueue(fn) {
+    const p = queue.then(fn);
+    queue = p.catch(() => {});
+    return p;
+  }
+
+  async function connect() {
+    const info = await gh('GET', '');
+    if (info.permissions && info.permissions.push === false) {
+      throw new Error('El token no tiene permiso para escribir en este repositorio.');
+    }
+    branch = info.default_branch || 'main';
+    shaByKey = {};
+    try {
+      const list = await gh('GET', `/contents/${UPLOAD_DIR}?ref=${encodeURIComponent(branch)}`);
+      if (Array.isArray(list)) {
+        list.forEach((f) => {
+          const m = f.name.match(/^(.+)\.jpg$/);
+          if (m) shaByKey[m[1]] = f.sha;
+        });
+      }
+    } catch (e) {
+      if (e.status !== 404) throw e;   // 404 = todavía no hay carpeta de fotos
+    }
+  }
+
+  // ── Interfaz ──────────────────────────────────────────────────
+  function setStatus(key, text, cls) {
+    const s = el('status-' + key);
+    s.textContent = text;
+    s.className = 'slot-status' + (cls ? ' ' + cls : '');
+  }
+
+  function refreshSlot(key, localUrl) {
+    const img = el('preview-' + key);
+    if (localUrl) {
+      img.src = localUrl;
+    } else if (shaByKey[key]) {
+      img.src = `${path(key)}?t=${Date.now()}`;
+      img.onerror = () => { img.onerror = null; img.src = PLACEHOLDER; };
+    } else {
+      img.src = PLACEHOLDER;
+    }
+    el('reset-' + key).disabled = !shaByKey[key];
+    if (!el('status-' + key).classList.contains('ok') && !el('status-' + key).classList.contains('err')) {
+      setStatus(key, shaByKey[key] ? 'Imagen personalizada activa.' : 'Usando la imagen original del sitio.');
+    }
+  }
+
+  function renderTabs() {
+    const tabs = el('tabs');
+    const groups = el('groups');
+    tabs.innerHTML = '';
+    groups.innerHTML = '';
+
+    GROUPS.forEach((g, i) => {
+      const tab = document.createElement('button');
+      tab.type = 'button';
+      tab.className = 'tab';
+      tab.setAttribute('role', 'tab');
+      tab.setAttribute('aria-selected', i === 0 ? 'true' : 'false');
+      tab.dataset.group = g.id;
+      tab.textContent = g.title;
+      tab.addEventListener('click', () => selectGroup(g.id));
+      tabs.appendChild(tab);
+
+      const section = document.createElement('section');
+      section.className = 'group' + (i === 0 ? ' active' : '');
+      section.id = 'group-' + g.id;
+      const link = g.page ? ` <a href="${g.page}" target="_blank" rel="noopener">Ver página</a>` : '';
+      section.innerHTML = `<p class="group-note">${g.note}${link}</p>`;
+
+      g.slots.forEach((slot) => {
+        const row = document.createElement('div');
+        row.className = 'slot-row';
+        row.innerHTML = `
+          <img class="slot-preview" id="preview-${slot.key}" alt="Vista previa de ${slot.name}">
+          <div class="slot-info">
+            <p class="name">${slot.name}</p>
+            <p class="desc">${slot.desc}</p>
+            <div class="slot-actions">
+              <label class="file-btn" id="label-${slot.key}">Cambiar imagen
+                <input type="file" accept="image/*" id="file-${slot.key}" aria-label="Cambiar imagen: ${slot.name}">
+              </label>
+              <button type="button" class="btn-sm" id="reset-${slot.key}">Volver a la original</button>
+            </div>
+            <p class="slot-status" id="status-${slot.key}" aria-live="polite"></p>
+          </div>`;
+        section.appendChild(row);
+      });
+      groups.appendChild(section);
+
+      g.slots.forEach((slot) => {
+        el('file-' + slot.key).addEventListener('change', (e) => {
+          const file = e.target.files[0];
+          if (file) uploadImage(slot.key, file);
+          e.target.value = '';
+        });
+        el('reset-' + slot.key).addEventListener('click', () => resetImage(slot.key, slot.name));
+        refreshSlot(slot.key);
+      });
+    });
+  }
+
+  function selectGroup(id) {
+    document.querySelectorAll('.tab').forEach((t) => t.setAttribute('aria-selected', t.dataset.group === id ? 'true' : 'false'));
+    document.querySelectorAll('.group').forEach((s) => s.classList.toggle('active', s.id === 'group-' + id));
+  }
+
+  // ── Subir / restaurar ─────────────────────────────────────────
+  // Reduce la imagen y la guarda como JPG para que el sitio cargue rápido.
+  async function prepareImage(file) {
+    const bmp = await createImageBitmap(file);
+    const scale = Math.min(1, MAX_SIDE / Math.max(bmp.width, bmp.height));
+    const w = Math.round(bmp.width * scale);
+    const h = Math.round(bmp.height * scale);
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(bmp, 0, 0, w, h);
+    const blob = await new Promise((res) => canvas.toBlob(res, 'image/jpeg', 0.86));
+    if (!blob) throw new Error('No se pudo procesar la imagen.');
+    return blob;
+  }
+
+  function toBase64(blob) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result).split(',')[1]);
+      r.onerror = () => reject(new Error('No se pudo leer la imagen.'));
+      r.readAsDataURL(blob);
+    });
+  }
+
+  async function uploadImage(key, file) {
+    const label = el('label-' + key);
+    if (!file.type.startsWith('image/')) {
+      setStatus(key, 'El archivo no es una imagen.', 'err');
+      return;
+    }
+    if (file.size > MAX_INPUT_MB * 1024 * 1024) {
+      setStatus(key, `La imagen pesa más de ${MAX_INPUT_MB} MB. Prueba con una más liviana.`, 'err');
+      return;
+    }
+
+    label.classList.add('busy');
+    setStatus(key, 'Procesando y subiendo...');
+    try {
+      const blob = await prepareImage(file);
+      const content = await toBase64(blob);
+      await enqueue(async () => {
+        const res = await gh('PUT', '/contents/' + path(key), {
+          message: `Actualizar imagen: ${key}`,
+          content,
+          branch,
+          ...(shaByKey[key] ? { sha: shaByKey[key] } : {}),
+        });
+        shaByKey[key] = res.content.sha;
+      });
+      setStatus(key, 'Imagen subida. El sitio la mostrará en cerca de un minuto.', 'ok');
+      refreshSlot(key, URL.createObjectURL(blob));
+    } catch (err) {
+      setStatus(key, 'No se pudo subir: ' + (err.message || err), 'err');
+    } finally {
+      label.classList.remove('busy');
+    }
+  }
+
+  async function resetImage(key, name) {
+    if (!confirm(`¿Volver a la imagen original de "${name}"? Se borrará la foto que subiste.`)) return;
+    const btn = el('reset-' + key);
+    btn.disabled = true;
+    setStatus(key, 'Restaurando...');
+    try {
+      await enqueue(async () => {
+        await gh('DELETE', '/contents/' + path(key), {
+          message: `Restaurar imagen original: ${key}`,
+          sha: shaByKey[key],
+          branch,
+        });
+        delete shaByKey[key];
+      });
+      setStatus(key, 'Se restauró la imagen original. El sitio tardará cerca de un minuto en mostrarla.', 'ok');
+      refreshSlot(key);
+    } catch (err) {
+      btn.disabled = false;
+      setStatus(key, 'No se pudo restaurar: ' + (err.message || err), 'err');
+    }
+  }
+
+  // ── Sesión ────────────────────────────────────────────────────
+  function showPanel() {
+    el('login-box').style.display = 'none';
+    el('panel-box').style.display = 'block';
+    renderTabs();
+  }
+
+  async function start(r, t, remember) {
+    repo = r.trim().replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '').replace(/\/$/, '');
+    token = t.trim();
+    await connect();
+    if (remember) {
+      localStorage.setItem(LS_REPO, repo);
+      localStorage.setItem(LS_TOKEN, token);
+    }
+    showPanel();
+  }
+
+  el('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errEl = el('login-error');
+    errEl.textContent = 'Conectando...';
+    try {
+      await start(el('repo').value, el('token').value, true);
+      errEl.textContent = '';
+    } catch (err) {
+      errEl.textContent = err.status === 401 || err.status === 404
+        ? 'No se pudo entrar. Revisa el nombre del repositorio y que el token tenga acceso a él.'
+        : 'No se pudo conectar: ' + err.message;
+    }
+  });
+
+  el('logout-btn').addEventListener('click', () => {
+    localStorage.removeItem(LS_TOKEN);
+    location.reload();
+  });
+
+  (async function init() {
+    try {
+      const r = localStorage.getItem(LS_REPO);
+      const t = localStorage.getItem(LS_TOKEN);
+      if (r) el('repo').value = r;
+      if (r && t) await start(r, t, false);
+    } catch (err) {
+      localStorage.removeItem(LS_TOKEN);
+      el('login-error').textContent = 'La sesión guardada ya no es válida. Ingresa el token otra vez.';
+    }
+  })();
+</script>
+</body>
+</html>
